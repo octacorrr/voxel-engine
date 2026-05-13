@@ -1,0 +1,25 @@
+// src/World/Chunk.js
+import { CHUNK_SIZE } from '../Constants.js';
+
+export class Chunk {
+    constructor(x, z) {
+        this.x = x;
+        this.z = z;
+        // Creamos el contenedor de datos (16x32x16 bloques)
+        // Usamos WORLD_HEIGHT para la verticalidad
+        this.data = new Uint8Array(CHUNK_SIZE * 32 * CHUNK_SIZE);
+    }
+
+    // Convertir coordenadas locales 3D a índice lineal 1D
+    getIndex(x, y, z) {
+        return x + (y * CHUNK_SIZE) + (z * CHUNK_SIZE * 32);
+    }
+
+    setBlock(x, y, z, id) {
+        this.data[this.getIndex(x, y, z)] = id;
+    }
+
+    getBlock(x, y, z) {
+        return this.data[this.getIndex(x, y, z)];
+    }
+}
