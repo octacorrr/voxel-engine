@@ -1,3 +1,6 @@
+
+import { World } from './src/World/World.js';
+
 // main.js - Versión Integrada
 import * as THREE from 'three';
 // Importamos los controles que acabas de crear
@@ -27,6 +30,11 @@ renderer.setPixelRatio(window.devicePixelRatio);
 // 4. LUCES
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
+
+
+const world = new World(scene);
+world.generateArea(0, 0); // Crea los bloques iniciales
+
 
 const sunLight = new THREE.DirectionalLight(0xffffff, 1);
 sunLight.position.set(5, 50, 5);

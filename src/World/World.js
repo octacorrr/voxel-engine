@@ -1,38 +1,37 @@
-// src/World/World.js
 import { Chunk } from './Chunk.js';
+import { MeshBuilder } from './MeshBuilder.js';
 import { getTerrainHeight } from '../Utils/Noise.js';
 import { CHUNK_SIZE } from '../Constants.js';
 
 export class World {
-    constructor() {
-        this.chunks = {}; // Diccionario para guardar los chunks por coordenadas
+    constructor(scene) {
+        this.scene = scene;
+        this.meshBuilder = new MeshBuilder();
+        this.chunks = {};
     }
 
-    // Genera un nuevo sector del mundo
-    generateChunk(chunkX, chunkZ) {
-        const chunk = new Chunk(chunkX, chunkZ);
-        const key = `${chunkX},${chunkZ}`;
+    generateArea(playerX, playerZ) {
+        // Generamos un área de 3x3 chunks alrededor del jugador
+        for (let x = -1; x <= 1; x++) {
+            for (let z = -1; z <= 1; z++) {
+                this.createChunk(x, z);
+            }
+        }
+    }
 
+    createChunk(cx, cz) {
+        const chunk = new Chunk(cx, cz);
+        // Llenar datos con el ruido procedural
         for (let x = 0; x < CHUNK_SIZE; x++) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
-                // Obtenemos la altura matemática del terreno para este punto
-                const worldX = chunkX * CHUNK_SIZE + x;
-                const worldZ = chunkZ * CHUNK_SIZE + z;
-                const surfaceHeight = getTerrainHeight(worldX, worldZ);
-
-                for (let y = 0; y < 32; y++) {
-                    if (y < surfaceHeight) {
-                        // ID 1 = Tierra/Pasto
-                        chunk.setBlock(x, y, z, 1);
-                    } else {
-                        // ID 0 = Aire
-                        chunk.setBlock(x, y, z, 0);
-                    }
+                const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+                for (let y = 0; y < h; y++) {
+                    chunk.setBlock(x, y, z, 1);
                 }
             }
         }
-
-        this.chunks[key] = chunk;
-        return chunk;
+        // Crear la malla visible y añadirla a la escena
+        const mesh = this.meshBuilder.buildChunkMesh(chunk);
+        this.scene.add(mesh);
     }
 }
