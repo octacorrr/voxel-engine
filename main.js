@@ -7,7 +7,10 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(8, 25, 8); // Subimos la cámara para ver el terreno desde arriba
+camera.position.set(20, 20, 20); 
+camera.lookAt(0, 0, 0);
+
+ // Subimos la cámara para ver el terreno desde arriba
 
 const canvas = document.querySelector('#game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -16,6 +19,12 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 // --- LUCES ---
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
+
+// Agrega una luz direccional más fuerte para ver las sombras de los bloques
+const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+sunLight.position.set(10, 50, 10);
+scene.add(sunLight);
+
 
 // --- EL MUNDO (Esto es lo que falta activar) ---
 const world = new World(scene);
