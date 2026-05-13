@@ -12,8 +12,8 @@ export class World {
 
     generateArea(playerX, playerZ) {
         // Generamos un área de 3x3 chunks alrededor del jugador
-        for (let x = -1; x <= 50; x++) {
-            for (let z = -1; z <= 50; z++) {
+        for (let x = -1; x <= 1; x++) {
+            for (let z = -1; z <= 1; z++) {
                 this.createChunk(x, z);
             }
         }

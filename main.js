@@ -29,7 +29,7 @@ scene.add(sunLight);
 
 // --- EL MUNDO (Esto es lo que falta activar) ---
 const world = new World(scene);
-world.generateArea(0, 0); 
+world.generateArea(64, 64); 
 
 // main.js
 // main.js

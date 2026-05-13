@@ -32,10 +32,14 @@ const world = new World(scene);
 world.generateArea(0, 0); 
 
 // main.js
-const playerControls = new Controls(camera, renderer.domElement);
+// main.js
+// ... debajo de world.generateArea(0,0);
+
+const playerControls = new Controls(camera, null); 
 
 
- playerControls = new Controls(camera, canvas);
+// ... sigue con function animate()
+
 const clock = new THREE.Clock();
 
 function animate() {
