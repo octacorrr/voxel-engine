@@ -7,8 +7,9 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(20, 20, 20); 
-camera.lookAt(0, 0, 0);
+camera.position.set(32, 50, 32); 
+camera.lookAt(16, 0, 16);
+
 
  // Subimos la cámara para ver el terreno desde arriba
 
@@ -30,7 +31,11 @@ scene.add(sunLight);
 const world = new World(scene);
 world.generateArea(0, 0); 
 
-const playerControls = new Controls(camera, canvas);
+// main.js
+const playerControls = new Controls(camera, renderer.domElement);
+
+
+ playerControls = new Controls(camera, canvas);
 const clock = new THREE.Clock();
 
 function animate() {

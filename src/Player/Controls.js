@@ -1,65 +1,60 @@
-// src/Player/Controls.js
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-
 
 export class Controls {
     constructor(camera, canvas) {
-        this.controls = new PointerLockControls(camera, canvas);
+        this.camera = camera;
         this.moveForward = false;
         this.moveBackward = false;
-        this.moveLeft = false;
-        this.moveRight = false;
-        this.velocity = new THREE.Vector3();
-        this.direction = new THREE.Vector3();
+        
+        // Estado de control
+        this.touchStart = { x: 0, y: 0 };
+        this.isTouching = false;
 
-        this.initEventListeners();
+        this.initMobileControls();
     }
 
-    initEventListeners() {
-        // Bloqueo del puntero al hacer clic
-        document.addEventListener('click', () => {
-            this.controls.lock();
+    initMobileControls() {
+        document.addEventListener('touchstart', (e) => {
+            this.isTouching = true;
+            this.touchStart.x = e.touches[0].pageX;
+            this.touchStart.y = e.touches[0].pageY;
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!this.isTouching) return;
+
+            let touchX = e.touches[0].pageX;
+            let touchY = e.touches[0].pageY;
+            
+            let deltaX = touchX - this.touchStart.x;
+            let deltaY = touchY - this.touchStart.y;
+
+            if (this.touchStart.x > window.innerWidth / 2) {
+                this.camera.rotation.y -= deltaX * 0.01;
+                this.camera.rotation.x -= deltaY * 0.01;
+            } else {
+                if (deltaY < -20) this.moveForward = true;
+                else if (deltaY > 20) this.moveBackward = true;
+                else { this.moveForward = false; this.moveBackward = false; }
+            }
+
+            this.touchStart.x = touchX;
+            this.touchStart.y = touchY;
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            this.isTouching = false;
+            this.moveForward = false;
+            this.moveBackward = false;
         });
-
-        const onKeyDown = (event) => {
-            switch (event.code) {
-                case 'KeyW': this.moveForward = true; break;
-                case 'KeyA': this.moveLeft = true; break;
-                case 'KeyS': this.moveBackward = true; break;
-                case 'KeyD': this.moveRight = true; break;
-                case 'Space': if (this.canJump) this.velocity.y += 5; break;
-            }
-        };
-
-        const onKeyUp = (event) => {
-            switch (event.code) {
-                case 'KeyW': this.moveForward = false; break;
-                case 'KeyA': this.moveLeft = false; break;
-                case 'KeyS': this.moveBackward = false; break;
-                case 'KeyD': this.moveRight = false; break;
-            }
-        };
-
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('keyup', onKeyUp);
     }
 
     update(delta) {
-        if (!this.controls.isLocked) return;
-
-        // Fricción para un movimiento suave
-        this.velocity.x -= this.velocity.x * 10.0 * delta;
-        this.velocity.z -= this.velocity.z * 10.0 * delta;
-
-        this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
-        this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
-        this.direction.normalize();
-
-        if (this.moveForward || this.moveBackward) this.velocity.z -= this.direction.z * 400.0 * delta;
-        if (this.moveLeft || this.moveRight) this.velocity.x -= this.direction.x * 400.0 * delta;
-
-        this.controls.moveRight(-this.velocity.x * delta);
-        this.controls.moveForward(-this.velocity.z * delta);
+        // Movimiento simple basado en la dirección de la cámara
+        if (this.moveForward) {
+            this.camera.translateZ(-10 * delta);
+        } else if (this.moveBackward) {
+            this.camera.translateZ(10 * delta);
+        }
     }
 }

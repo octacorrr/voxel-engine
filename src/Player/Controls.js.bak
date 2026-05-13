@@ -1,33 +1,42 @@
 // src/Player/Controls.js
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
 export class Controls {
     constructor(camera, canvas) {
+        this.camera = camera;
         this.controls = new PointerLockControls(camera, canvas);
+        
+        // Estados de movimiento
         this.moveForward = false;
         this.moveBackward = false;
         this.moveLeft = false;
         this.moveRight = false;
+        
+        // Física básica
         this.velocity = new THREE.Vector3();
         this.direction = new THREE.Vector3();
+        
+        // Control táctil
+        this.touchStart = { x: 0, y: 0 };
+        this.isTouching = false;
 
         this.initEventListeners();
     }
 
     initEventListeners() {
-        // Bloqueo del puntero al hacer clic
+        // Activación por clic (PC)
         document.addEventListener('click', () => {
             this.controls.lock();
         });
 
+        // TECLADO
         const onKeyDown = (event) => {
             switch (event.code) {
                 case 'KeyW': this.moveForward = true; break;
                 case 'KeyA': this.moveLeft = true; break;
                 case 'KeyS': this.moveBackward = true; break;
                 case 'KeyD': this.moveRight = true; break;
-                case 'Space': if (this.canJump) this.velocity.y += 5; break;
             }
         };
 
@@ -42,12 +51,54 @@ export class Controls {
 
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
+
+        // MÓVIL: Eventos táctiles
+        document.addEventListener('touchstart', (e) => {
+            this.isTouching = true;
+            this.touchStart.x = e.touches[0].pageX;
+            this.touchStart.y = e.touches[0].pageY;
+        }, { passive: false });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!this.isTouching) return;
+
+            let touchX = e.touches[0].pageX;
+            let touchY = e.touches[0].pageY;
+            
+            let deltaX = touchX - this.touchStart.x;
+            let deltaY = touchY - this.touchStart.y;
+
+            // Mitad derecha: Rotar Cámara
+            if (this.touchStart.x > window.innerWidth / 2) {
+                this.camera.rotation.y -= deltaX * 0.005;
+                this.camera.rotation.x -= deltaY * 0.005;
+            } else {
+                // Mitad izquierda: Caminar
+                if (deltaY < -10) {
+                    this.moveForward = true;
+                    this.moveBackward = false;
+                } else if (deltaY > 10) {
+                    this.moveBackward = true;
+                    this.moveForward = false;
+                }
+            }
+
+            this.touchStart.x = touchX;
+            this.touchStart.y = touchY;
+        }, { passive: false });
+
+        document.addEventListener('touchend', () => {
+            this.isTouching = false;
+            this.moveForward = false;
+            this.moveBackward = false;
+        });
     }
 
     update(delta) {
-        if (!this.controls.isLocked) return;
+        // Solo procesamos si hay interacción
+        if (!this.controls.isLocked && !this.isTouching) return;
 
-        // Fricción para un movimiento suave
+        // Fricción
         this.velocity.x -= this.velocity.x * 10.0 * delta;
         this.velocity.z -= this.velocity.z * 10.0 * delta;
 

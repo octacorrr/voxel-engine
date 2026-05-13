@@ -31,7 +31,15 @@ scene.add(sunLight);
 const world = new World(scene);
 world.generateArea(0, 0); 
 
-const playerControls = new Controls(camera, canvas);
+// main.js
+// main.js
+// ... debajo de world.generateArea(0,0);
+
+const playerControls = new Controls(camera, null); 
+
+
+// ... sigue con function animate()
+
 const clock = new THREE.Clock();
 
 function animate() {
