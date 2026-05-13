@@ -11,27 +11,39 @@ export class World {
     }
 
     generateArea(playerX, playerZ) {
-        // Generamos un área de 3x3 chunks alrededor del jugador
-        for (let x = -1; x <= 1; x++) {
-            for (let z = -1; z <= 1; z++) {
-                this.createChunk(x, z);
-            }
-        }
-    }
+    // Calculamos el chunk donde está parado el jugador
+    const pCX = Math.floor(playerX / CHUNK_SIZE);
+    const pCZ = Math.floor(playerZ / CHUNK_SIZE);
 
-    createChunk(cx, cz) {
-        const chunk = new Chunk(cx, cz);
-        // Llenar datos con el ruido procedural
-        for (let x = 0; x < CHUNK_SIZE; x++) {
-            for (let z = 0; z < CHUNK_SIZE; z++) {
-                const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
-                for (let y = 0; y < h; y++) {
-                    chunk.setBlock(x, y, z, 1);
-                }
-            }
+    // Generamos 2 chunks a la redonda (un área de 5x5 total)
+    const radio = 2; 
+
+    for (let x = pCX - radio; x <= pCX + radio; x++) {
+        for (let z = pCZ - radio; z <= pCZ + radio; z++) {
+            this.createChunk(x, z);
         }
-        // Crear la malla visible y añadirla a la escena
-        const mesh = this.meshBuilder.buildChunkMesh(chunk);
-        this.scene.add(mesh);
     }
 }
+
+
+    createChunk(cx, cz) {
+    const chunk = new Chunk(cx, cz);
+    for (let x = 0; x < CHUNK_SIZE; x++) {
+        for (let z = 0; z < CHUNK_SIZE; z++) {
+            const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+            for (let y = 0; y < h; y++) {
+                chunk.setBlock(x, y, z, 1);
+            }
+        }
+    }
+    
+    const mesh = this.meshBuilder.buildChunkMesh(chunk);
+    
+    // VALIDACIÓN CRÍTICA: Solo añade si la malla existe
+    if (mesh) {
+        this.scene.add(mesh);
+    } else {
+        console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
+    }
+}
+
