@@ -11,16 +11,31 @@ export class World {
     }
 
     generateArea(playerX, playerZ) {
+        // 1. Calculamos el chunk donde está parado el jugador
         const pCX = Math.floor(playerX / CHUNK_SIZE);
         const pCZ = Math.floor(playerZ / CHUNK_SIZE);
-        const radio = 3; 
+
+        // 2. Bajamos el radio a 2 (Área de 5x5). Para pantallas de móvil es ideal y más ligero.
+        const radio = 2; 
+
+        // 3. SEGURO ANTI-LAG: Bandera para limitar la generación masiva
+        let chunkCreadoEsteCuadro = false;
 
         for (let x = pCX - radio; x <= pCX + radio; x++) {
             for (let z = pCZ - radio; z <= pCZ + radio; z++) {
-                this.createChunk(x, z);
+                const key = `${x},${z}`;
+                
+                // Si el chunk NO existe en memoria y aún no hemos creado uno en este frame...
+                if (!this.chunks[key] && !chunkCreadoEsteCuadro) {
+                    this.createChunk(x, z);
+                    
+                    // Activamos la bandera para bloquear los demás loops por este milisegundo
+                    chunkCreadoEsteCuadro = true; 
+                }
             }
         }
     }
+    
 
     createChunk(cx, cz) {
         // EL SEGURO: Creamos una llave única para el chunk (ej: "2,3")
