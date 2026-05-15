@@ -11,26 +11,30 @@ export class World {
     }
 
     generateArea(playerX, playerZ) {
-    // Calculamos el chunk donde está parado el jugador
+    // 1. Convertimos la posición real del jugador en coordenadas de Chunk
+    // Usamos Math.floor para que devuelva números enteros correctos
     const pCX = Math.floor(playerX / CHUNK_SIZE);
     const pCZ = Math.floor(playerZ / CHUNK_SIZE);
 
-    // Generamos 2 chunks a la redonda (un área de 5x5 total)
-    const radio = 2; 
+    // 2. Definimos el radio de renderizado (3 chunks a la redonda es ideal para móvil)
+    const radio = 3; 
 
+    // 3. El bucle ahora se centra en donde esté el jugador (pCX y pCZ)
     for (let x = pCX - radio; x <= pCX + radio; x++) {
         for (let z = pCZ - radio; z <= pCZ + radio; z++) {
+            // Se encarga de crearlo si no existe, o saltarlo si ya existe
             this.createChunk(x, z);
         }
     }
 }
 
 
+
     createChunk(cx, cz) {
     const chunk = new Chunk(cx, cz);
     for (let x = 0; x < CHUNK_SIZE; x++) {
         for (let z = 0; z < CHUNK_SIZE; z++) {
-            const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+            const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz            * CHUNK_SIZE + z);
             for (let y = 0; y < h; y++) {
                 chunk.setBlock(x, y, z, 1);
             }
@@ -44,6 +48,6 @@ export class World {
         this.scene.add(mesh);
     } else {
         console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
+        }
     }
 }
-

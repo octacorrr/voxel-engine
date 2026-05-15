@@ -29,7 +29,7 @@ scene.add(sunLight);
 
 // --- EL MUNDO (Esto es lo que falta activar) ---
 const world = new World(scene);
-world.generateArea(0, 0); 
+world.generateArea(64, 64); 
 
 // main.js
 // main.js
@@ -40,12 +40,14 @@ const playerControls = new Controls(camera, null);
 
 // ... sigue con function animate()
 
-const clock = new THREE.Clock();
-
 function animate() {
     requestAnimationFrame(animate);
     const delta = clock.getDelta();
+    
     playerControls.update(delta);
+
+    // CRÍTICO: El mundo tiene que saber en tiempo real dónde está la cámara
+    world.generateArea(camera.position.x, camera.position.z);
+
     renderer.render(scene, camera);
 }
-animate();

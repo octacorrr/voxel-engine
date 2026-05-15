@@ -1,115 +1,84 @@
-// src/Player/Controls.js
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
 export class Controls {
-    constructor(camera, canvas) {
+    constructor(camera) {
         this.camera = camera;
-        this.controls = new PointerLockControls(camera, canvas);
-        
-        // Estados de movimiento
         this.moveForward = false;
-        this.moveBackward = false;
-        this.moveLeft = false;
-        this.moveRight = false;
         
-        // Física básica
-        this.velocity = new THREE.Vector3();
-        this.direction = new THREE.Vector3();
+        // Rastreadores de dedos (para no confundir el izquierdo con el derecho)
+        this.touchMoveId = null; 
+        this.touchSteerId = null; 
         
-        // Control táctil
-        this.touchStart = { x: 0, y: 0 };
-        this.isTouching = false;
-
-        this.initEventListeners();
+        this.previousTouch = { x: 0, y: 0 };
+        
+        this.initMobileControls();
     }
 
-    initEventListeners() {
-        // Activación por clic (PC)
-        document.addEventListener('click', () => {
-            this.controls.lock();
-        });
-
-        // TECLADO
-        const onKeyDown = (event) => {
-            switch (event.code) {
-                case 'KeyW': this.moveForward = true; break;
-                case 'KeyA': this.moveLeft = true; break;
-                case 'KeyS': this.moveBackward = true; break;
-                case 'KeyD': this.moveRight = true; break;
-            }
-        };
-
-        const onKeyUp = (event) => {
-            switch (event.code) {
-                case 'KeyW': this.moveForward = false; break;
-                case 'KeyA': this.moveLeft = false; break;
-                case 'KeyS': this.moveBackward = false; break;
-                case 'KeyD': this.moveRight = false; break;
-            }
-        };
-
-        document.addEventListener('keydown', onKeyDown);
-        document.addEventListener('keyup', onKeyUp);
-
-        // MÓVIL: Eventos táctiles
+    initMobileControls() {
+        // CUANDO TOCAS LA PANTALLA
         document.addEventListener('touchstart', (e) => {
-            this.isTouching = true;
-            this.touchStart.x = e.touches[0].pageX;
-            this.touchStart.y = e.touches[0].pageY;
-        }, { passive: false });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!this.isTouching) return;
-
-            let touchX = e.touches[0].pageX;
-            let touchY = e.touches[0].pageY;
-            
-            let deltaX = touchX - this.touchStart.x;
-            let deltaY = touchY - this.touchStart.y;
-
-            // Mitad derecha: Rotar Cámara
-            if (this.touchStart.x > window.innerWidth / 2) {
-                this.camera.rotation.y -= deltaX * 0.005;
-                this.camera.rotation.x -= deltaY * 0.005;
-            } else {
-                // Mitad izquierda: Caminar
-                if (deltaY < -10) {
+            // Revisamos todos los dedos que acaban de tocar
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                
+                // Mitad Izquierda: Caminar
+                if (touch.pageX < window.innerWidth / 2 && this.touchMoveId === null) {
+                    this.touchMoveId = touch.identifier; // Registramos este dedo
                     this.moveForward = true;
-                    this.moveBackward = false;
-                } else if (deltaY > 10) {
-                    this.moveBackward = true;
-                    this.moveForward = false;
+                } 
+                // Mitad Derecha: Girar
+                else if (touch.pageX >= window.innerWidth / 2 && this.touchSteerId === null) {
+                    this.touchSteerId = touch.identifier; // Registramos este otro dedo
+                    this.previousTouch.x = touch.pageX;
+                    this.previousTouch.y = touch.pageY;
                 }
             }
-
-            this.touchStart.x = touchX;
-            this.touchStart.y = touchY;
         }, { passive: false });
 
-        document.addEventListener('touchend', () => {
-            this.isTouching = false;
-            this.moveForward = false;
-            this.moveBackward = false;
-        });
+        // CUANDO DESLIZAS EL DEDO
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault(); // Evita que la pantalla intente hacer scroll
+            
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                
+                // Solo rotamos la cámara si el dedo que se mueve es el del "Volante" (Derecho)
+                if (touch.identifier === this.touchSteerId) {
+                    const deltaX = touch.pageX - this.previousTouch.x;
+                    const deltaY = touch.pageY - this.previousTouch.y;
+
+                    // Ajusta estos valores (0.005) si la cámara gira muy rápido o muy lento
+                    this.camera.rotation.y -= deltaX * 0.005;
+                    this.camera.rotation.x -= deltaY * 0.005;
+
+                    this.previousTouch.x = touch.pageX;
+                    this.previousTouch.y = touch.pageY;
+                }
+            }
+        }, { passive: false });
+
+        // CUANDO LEVANTAS EL DEDO
+        document.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                
+                // Si levantamos el dedo izquierdo, nos detenemos
+                if (touch.identifier === this.touchMoveId) {
+                    this.touchMoveId = null;
+                    this.moveForward = false;
+                }
+                // Si levantamos el dedo derecho, dejamos de registrar el giro
+                if (touch.identifier === this.touchSteerId) {
+                    this.touchSteerId = null;
+                }
+            }
+        }, { passive: false });
     }
 
     update(delta) {
-        // Solo procesamos si hay interacción
-        if (!this.controls.isLocked && !this.isTouching) return;
-
-        // Fricción
-        this.velocity.x -= this.velocity.x * 10.0 * delta;
-        this.velocity.z -= this.velocity.z * 10.0 * delta;
-
-        this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
-        this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
-        this.direction.normalize();
-
-        if (this.moveForward || this.moveBackward) this.velocity.z -= this.direction.z * 400.0 * delta;
-        if (this.moveLeft || this.moveRight) this.velocity.x -= this.direction.x * 400.0 * delta;
-
-        this.controls.moveRight(-this.velocity.x * delta);
-        this.controls.moveForward(-this.velocity.z * delta);
+        if (this.moveForward) {
+            // El '15' es la velocidad a la que camina el personaje
+            this.camera.translateZ(-15 * delta); 
+        }
     }
 }

@@ -1,60 +1,111 @@
 import * as THREE from 'three';
 
 export class Controls {
-    constructor(camera, canvas) {
+    constructor(camera) {
         this.camera = camera;
         this.moveForward = false;
-        this.moveBackward = false;
         
-        // Estado de control
-        this.touchStart = { x: 0, y: 0 };
-        this.isTouching = false;
+        // Identificador para el dedo del giro
+        this.touchSteerId = null; 
+        this.previousTouch = { x: 0, y: 0 };
 
+        // Forzar orden correcto de rotación para evitar giros locos
+        this.camera.rotation.order = 'YXZ';
+
+        this.createMoveButton();
         this.initMobileControls();
     }
 
+    createMoveButton() {
+        // Creamos el elemento del botón visual
+        this.button = document.createElement('div');
+        
+        // Estilos para que parezca un joystick virtual clásico
+        this.button.style.position = 'absolute';
+        this.button.style.bottom = '50px';
+        this.button.style.left = '50px';
+        this.button.style.width = '90px';
+        this.button.style.height = '90px';
+        this.button.style.borderRadius = '50%';
+        this.button.style.backgroundColor = 'rgba(255, 255, 255, 0.25)';
+        this.button.style.border = '3px solid rgba(255, 255, 255, 0.6)';
+        this.button.style.zIndex = '9999';
+        this.button.style.touchAction = 'none'; // Evita zooms raros del navegador
+        
+        // Añadir una flecha o indicador visual al centro
+        this.button.style.display = 'flex';
+        this.button.style.alignItems = 'center';
+        this.button.style.justifyContent = 'center';
+        this.button.style.color = 'white';
+        this.button.style.fontSize = '24px';
+        this.button.style.fontWeight = 'bold';
+        this.button.innerHTML = '▲';
+
+        // Insertar el botón directamente en la pantalla
+        document.body.appendChild(this.button);
+
+        // --- EVENTOS EXCLUSIVOS DEL BOTÓN ---
+        this.button.addEventListener('touchstart', (e) => {
+            e.stopPropagation(); // Detiene el toque aquí para que no mueva la cámara
+            this.moveForward = true;
+            this.button.style.backgroundColor = 'rgba(255, 255, 255, 0.5)'; // Efecto presionado
+        }, { passive: false });
+
+        this.button.addEventListener('touchend', (e) => {
+            e.stopPropagation();
+            this.moveForward = false;
+            this.button.style.backgroundColor = 'rgba(255, 255, 255, 0.25)'; // Estado normal
+        }, { passive: false });
+    }
+
     initMobileControls() {
+        // --- EVENTOS DEL RESTO DE LA PANTALLA (GIRO) ---
         document.addEventListener('touchstart', (e) => {
-            this.isTouching = true;
-            this.touchStart.x = e.touches[0].pageX;
-            this.touchStart.y = e.touches[0].pageY;
+            // Si ya estamos registrando un dedo de giro, ignoramos otros
+            if (this.touchSteerId !== null) return;
+
+            const touch = e.changedTouches[0];
+            this.touchSteerId = touch.identifier;
+            this.previousTouch.x = touch.pageX;
+            this.previousTouch.y = touch.pageY;
         }, { passive: false });
 
         document.addEventListener('touchmove', (e) => {
-            if (!this.isTouching) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                
+                // Solo rota si es el dedo asignado a la dirección
+                if (touch.identifier === this.touchSteerId) {
+                    const deltaX = touch.pageX - this.previousTouch.x;
+                    const deltaY = touch.pageY - this.previousTouch.y;
 
-            let touchX = e.touches[0].pageX;
-            let touchY = e.touches[0].pageY;
-            
-            let deltaX = touchX - this.touchStart.x;
-            let deltaY = touchY - this.touchStart.y;
+                    // Control de rotación horizontal (Y) y vertical (X)
+                    this.camera.rotation.y -= deltaX * 0.004;
+                    this.camera.rotation.x -= deltaY * 0.004;
 
-            if (this.touchStart.x > window.innerWidth / 2) {
-                this.camera.rotation.y -= deltaX * 0.01;
-                this.camera.rotation.x -= deltaY * 0.01;
-            } else {
-                if (deltaY < -20) this.moveForward = true;
-                else if (deltaY > 20) this.moveBackward = true;
-                else { this.moveForward = false; this.moveBackward = false; }
+                    // Límite físico para que no puedas mirar "boca abajo" (clamping)
+                    this.camera.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.camera.rotation.x));
+
+                    this.previousTouch.x = touch.pageX;
+                    this.previousTouch.y = touch.pageY;
+                }
             }
-
-            this.touchStart.x = touchX;
-            this.touchStart.y = touchY;
         }, { passive: false });
 
-        document.addEventListener('touchend', () => {
-            this.isTouching = false;
-            this.moveForward = false;
-            this.moveBackward = false;
-        });
+        document.addEventListener('touchend', (e) => {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === this.touchSteerId) {
+                    this.touchSteerId = null;
+                }
+            }
+        }, { passive: false });
     }
 
     update(delta) {
-        // Movimiento simple basado en la dirección de la cámara
         if (this.moveForward) {
-            this.camera.translateZ(-10 * delta);
-        } else if (this.moveBackward) {
-            this.camera.translateZ(10 * delta);
+            // Mantiene la velocidad de exploración constante
+            this.camera.translateZ(-15 * delta); 
         }
     }
 }
