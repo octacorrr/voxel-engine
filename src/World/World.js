@@ -35,25 +35,34 @@ export class World {
             }
         }
     }
-    
 
+    // CORREGIDO: Declaramos correctamente la función y abrimos la llave
     createChunk(cx, cz) {
-        // EL SEGURO: Creamos una llave única para el chunk (ej: "2,3")
-        const key = `${cx},${cz}`;
-        
-        // Si ya existe en memoria, salimos inmediatamente y no gastamos recursos
-        if (this.chunks[key]) return;
+        const key = `${cx},${cz}`; // Definimos la llave única de memoria para este chunk
 
         const chunk = new Chunk(cx, cz);
         for (let x = 0; x < CHUNK_SIZE; x++) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
+                // Obtenemos la altura máxima de la superficie en esta coordenada
                 const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+                
+                // Rellenamos verticalmente desde el fondo (y = 0) hasta la altura máxima (h)
                 for (let y = 0; y < h; y++) {
-                    chunk.setBlock(x, y, z, 1);
+                    let blockId = 3; // Por defecto, asumimos que es Piedra (Gris)
+
+                    if (y === h - 1) {
+                        blockId = 1; // Si es el bloque más alto, es Césped (Verde)
+                    } else if (y >= h - 4) {
+                        blockId = 2; // Si está a menos de 4 bloques de la superficie, es Tierra (Café)
+                    }
+
+                    // Guardamos el bloque con su ID correspondiente
+                    chunk.setBlock(x, y, z, blockId);
                 }
             }
         }
         
+        // Generamos la malla optimizada con InstancedMesh leyendo los IDs de color
         const mesh = this.meshBuilder.buildChunkMesh(chunk);
         
         if (mesh) {
@@ -63,5 +72,5 @@ export class World {
             this.chunks[key] = true; // Memorizamos que aquí está vacío para no re-calcular
             console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
         }
-    }
-}
+    } // Llave que cierra createChunk
+} // Llave que cierra la clase World

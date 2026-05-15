@@ -3,20 +3,12 @@ import { CHUNK_SIZE } from '../Constants.js';
 
 export class MeshBuilder {
     constructor() {
-        // 1. Mantenemos el material en blanco puro por defecto, 
-        // ya que los colores individuales se multiplicarán por este color.
-        this.material = new THREE.MeshStandardMaterial({ color: 0xffffff });
-
-        // 2. Definimos nuestra paleta de colores usando la clase Color de Three.js
-        this.colors = {
-            1: new THREE.Color(0x557a2b), // Verde Césped
-            2: new THREE.Color(0x866043), // Café Tierra
-            3: new THREE.Color(0x747474)  // Gris Piedra
-        };
+        // Definimos un material básico (puedes cambiar el color a 0x55aa55 para verde pasto)
+        this.material = new THREE.MeshStandardMaterial({ color: 0x55aa55 });
     }
 
     /**
-     * Toma un objeto Chunk y devuelve una malla 3D optimizada con soporte de color
+     * Toma un objeto Chunk y devuelve una malla 3D optimizada
      */
     buildChunkMesh(chunk) {
         // 1. Contamos cuántos bloques sólidos existen (que no sean aire ID: 0)
@@ -54,20 +46,11 @@ export class MeshBuilder {
                         
                         // Añadimos la instancia a la malla
                         mesh.setMatrixAt(instanceIndex, matrix);
-
-                        // MODIFICACIÓN CRÍTICA: Leemos el color correspondiente al ID del bloque.
-                        // Si por alguna razón el ID no existe, usamos el color Césped (1) por defecto.
-                        const colorTarget = this.colors[blockId] || this.colors[1];
-                        mesh.setColorAt(instanceIndex, colorTarget);
-                        
                         instanceIndex++;
                     }
                 }
             }
         }
-
-        // Le avisamos a Three.js que actualice los colores en la tarjeta de video
-        mesh.instanceColor.needsUpdate = true;
 
         return mesh;
     }
