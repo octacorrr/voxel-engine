@@ -35,7 +35,10 @@ export class World {
             }
         }
     }
-    
+
+    // CORREGIDO: Declaramos correctamente la función y abrimos la llave
+    createChunk(cx, cz) {
+        const key = `${cx},${cz}`; // Definimos la llave única de memoria para este chunk
 
         const chunk = new Chunk(cx, cz);
         for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -59,7 +62,7 @@ export class World {
             }
         }
         
-        
+        // Generamos la malla optimizada con InstancedMesh leyendo los IDs de color
         const mesh = this.meshBuilder.buildChunkMesh(chunk);
         
         if (mesh) {
@@ -69,5 +72,5 @@ export class World {
             this.chunks[key] = true; // Memorizamos que aquí está vacío para no re-calcular
             console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
         }
-    }
-}
+    } // Llave que cierra createChunk
+} // Llave que cierra la clase World
