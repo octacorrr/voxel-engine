@@ -1,4 +1,3 @@
-import * as THREE from 'three';                    // ←←← ESTA LÍNEA ES LA QUE FALTABA
 import { Chunk } from './Chunk.js';
 import { MeshBuilder } from './MeshBuilder.js';
 import { getTerrainHeight } from '../Utils/Noise.js';
@@ -8,99 +7,110 @@ export class World {
     constructor(scene) {
         this.scene = scene;
         this.meshBuilder = new MeshBuilder();
-        this.chunks = {}; // key: "cx,cz" → mesh
+        this.chunks = {}; // Diccionario para memorizar chunks creados
     }
 
-    /**
-     * Genera chunks cercanos + elimina los lejanos (anti memory leak)
-     */
-    generateArea(playerX, playerZ) {
+            generateArea(playerX, playerZ) {
+        // 1. Calculamos el chunk donde está parado el jugador
         const pCX = Math.floor(playerX / CHUNK_SIZE);
         const pCZ = Math.floor(playerZ / CHUNK_SIZE);
-        
-        const radio = 2;                    // Radio de renderizado
-        const unloadRadio = radio + 2;      // Radio para descargar
 
-        let chunkCreadoEsteFrame = false;
+        // 2. Radio de visión (3 o 4 es ideal para móviles)
+        const radio = 3; 
 
-        // === GENERACIÓN DE NUEVOS CHUNKS ===
+        // 3. NUEVO PRESUPUESTO: Permitimos construir hasta 3 chunks por cuadro para evitar zonas vacías
+        let chunksCreadosEnEsteCuadro = 0;
+        const maxChunksPorCuadro = 3; 
+
         for (let x = pCX - radio; x <= pCX + radio; x++) {
             for (let z = pCZ - radio; z <= pCZ + radio; z++) {
                 const key = `${x},${z}`;
-
-                if (!this.chunks[key] && !chunkCreadoEsteFrame) {
+                
+                // Si el chunk NO existe y aún tenemos presupuesto en este frame...
+                if (!this.chunks[key] && chunksCreadosEnEsteCuadro < maxChunksPorCuadro) {
                     this.createChunk(x, z);
-                    chunkCreadoEsteFrame = true;
+                    chunksCreadosEnEsteCuadro++; // Sumamos uno al contador
                 }
             }
         }
 
-        // === UNLOAD DE CHUNKS LEJANOS ===
-        this.unloadFarChunks(pCX, pCZ, unloadRadio);
-    }
-
-    /**
-     * Elimina chunks lejanos y libera memoria correctamente
-     */
-    unloadFarChunks(pCX, pCZ, maxDistance) {
+        // 4. SISTEMA DE LIMPIEZA: Borra los chunks lejanos para liberar memoria
         for (const key in this.chunks) {
             const [cx, cz] = key.split(',').map(Number);
-            const distX = Math.abs(cx - pCX);
-            const distZ = Math.abs(cz - pCZ);
 
-            if (distX > maxDistance || distZ > maxDistance) {
+            if (Math.abs(cx - pCX) > radio || Math.abs(cz - pCZ) > radio) {
                 const mesh = this.chunks[key];
-
-                if (mesh && mesh instanceof THREE.InstancedMesh) {
-                    this.scene.remove(mesh);
-                    
-                    // Liberación correcta de memoria
-                    if (mesh.geometry) mesh.geometry.dispose();
-                    if (mesh.material) {
-                        if (Array.isArray(mesh.material)) {
-                            mesh.material.forEach(mat => mat.dispose());
-                        } else {
-                            mesh.material.dispose();
-                        }
-                    }
-                    if (mesh.instanceMatrix) mesh.instanceMatrix.dispose();
-                    if (mesh.instanceColor) mesh.instanceColor.dispose();
+                
+                if (mesh && mesh !== true) {
+                    this.scene.remove(mesh);          
+                    mesh.geometry.dispose();         
+                    if (mesh.material.dispose) mesh.material.dispose(); 
                 }
-
                 delete this.chunks[key];
             }
         }
     }
+    
+    
 
+        // 4. --- NUEVO SISTEMA DE LIMPIEZA: Borra los chunks lejanos para evitar el lag ---
+        for (const key in this.chunks) {
+            // Obtenemos las coordenadas del chunk guardado a partir de su llave "x,z"
+            const [cx, cz] = key.split(',').map(Number);
+
+            // Si el chunk está más lejos del radio permitido, lo destruimos
+            if (Math.abs(cx - pCX) > radio || Math.abs(cz - pCZ) > radio) {
+                const mesh = this.chunks[key];
+                
+                // Si lo que guardamos era una malla visible de Three.js, la removemos de la tarjeta gráfica
+                if (mesh && mesh !== true) {
+                    this.scene.remove(mesh);          // Lo quita de la pantalla
+                    mesh.geometry.dispose();         // Borra los cubos de la memoria gráfica
+                    if (mesh.material.dispose) mesh.material.dispose(); 
+                }
+
+                // Eliminamos el registro por completo de nuestro diccionario de memoria
+                delete this.chunks[key];
+            }
+        }
+    }
+    
+
+    // CORREGIDO: Declaramos correctamente la función y abrimos la llave
     createChunk(cx, cz) {
-        const key = `${cx},${cz}`;
+        const key = `${cx},${cz}`; // Definimos la llave única de memoria para este chunk
 
         const chunk = new Chunk(cx, cz);
-        
         for (let x = 0; x < CHUNK_SIZE; x++) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
-                const worldX = cx * CHUNK_SIZE + x;
-                const worldZ = cz * CHUNK_SIZE + z;
-                const h = getTerrainHeight(worldX, worldZ);
-
+                // Obtenemos la altura máxima de la superficie en esta coordenada
+                const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+                
+                // Rellenamos verticalmente desde el fondo (y = 0) hasta la altura máxima (h)
                 for (let y = 0; y < h; y++) {
-                    let blockId = 3; // Piedra
+                    let blockId = 3; // Por defecto, asumimos que es Piedra (Gris)
 
-                    if (y === h - 1) blockId = 1;      // Césped
-                    else if (y >= h - 4) blockId = 2;  // Tierra
+                    if (y === h - 1) {
+                        blockId = 1; // Si es el bloque más alto, es Césped (Verde)
+                    } else if (y >= h - 4) {
+                        blockId = 2; // Si está a menos de 4 bloques de la superficie, es Tierra (Café)
+                    }
 
+                    // Guardamos el bloque con su ID correspondiente
                     chunk.setBlock(x, y, z, blockId);
                 }
             }
         }
-
+        
+        // Generamos la malla optimizada con InstancedMesh leyendo los IDs de color
         const mesh = this.meshBuilder.buildChunkMesh(chunk);
-
+        
         if (mesh) {
             this.scene.add(mesh);
-            this.chunks[key] = mesh;
+            this.chunks[key] = mesh; // Memorizamos la malla para la próxima
         } else {
-            this.chunks[key] = null;
+            this.chunks[key] = true; // Memorizamos que aquí está vacío para no re-calcular
+            console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
         }
-    }
-}
+    } // Llave que cierra createChunk
+} // Llave que cierra la clase World

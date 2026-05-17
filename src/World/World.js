@@ -15,30 +15,44 @@ export class World {
         const pCX = Math.floor(playerX / CHUNK_SIZE);
         const pCZ = Math.floor(playerZ / CHUNK_SIZE);
 
-        // 2. Bajamos el radio a 2 (Área de 5x5). Para pantallas de móvil es ideal y más ligero.
-        const radio = 2; 
+        // 2. Radio de visión (3 o 4 es ideal para móviles)
+        const radio = 3; 
 
-        // 3. SEGURO ANTI-LAG: Bandera para limitar la generación masiva
-        let chunkCreadoEsteCuadro = false;
+        // 3. NUEVO PRESUPUESTO: Permitimos construir hasta 3 chunks por cuadro para evitar zonas vacías
+        let chunksCreadosEnEsteCuadro = 0;
+        const maxChunksPorCuadro = 3; 
 
         for (let x = pCX - radio; x <= pCX + radio; x++) {
             for (let z = pCZ - radio; z <= pCZ + radio; z++) {
                 const key = `${x},${z}`;
                 
-                // Si el chunk NO existe en memoria y aún no hemos creado uno en este frame...
-                if (!this.chunks[key] && !chunkCreadoEsteCuadro) {
+                // Si el chunk NO existe y aún tenemos presupuesto en este frame...
+                if (!this.chunks[key] && chunksCreadosEnEsteCuadro < maxChunksPorCuadro) {
                     this.createChunk(x, z);
-                    
-                    // Activamos la bandera para bloquear los demás loops por este milisegundo
-                    chunkCreadoEsteCuadro = true; 
+                    chunksCreadosEnEsteCuadro++; // Sumamos uno al contador
                 }
+            }
+        }
+
+        // 4. SISTEMA DE LIMPIEZA: Borra los chunks lejanos para liberar memoria
+        for (const key in this.chunks) {
+            const [cx, cz] = key.split(',').map(Number);
+
+            if (Math.abs(cx - pCX) > radio || Math.abs(cz - pCZ) > radio) {
+                const mesh = this.chunks[key];
+                
+                if (mesh && mesh !== true) {
+                    this.scene.remove(mesh);          
+                    mesh.geometry.dispose();         
+                    if (mesh.material.dispose) mesh.material.dispose(); 
+                }
+                delete this.chunks[key];
             }
         }
     }
 
-    // CORREGIDO: Declaramos correctamente la función y abrimos la llave
     createChunk(cx, cz) {
-        const key = `${cx},${cz}`; // Definimos la llave única de memoria para este chunk
+        const key = `${cx},${cz}`; 
 
         const chunk = new Chunk(cx, cz);
         for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -67,10 +81,10 @@ export class World {
         
         if (mesh) {
             this.scene.add(mesh);
-            this.chunks[key] = mesh; // Memorizamos la malla para la próxima
+            this.chunks[key] = mesh; 
         } else {
-            this.chunks[key] = true; // Memorizamos que aquí está vacío para no re-calcular
+            this.chunks[key] = true; 
             console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
         }
-    } // Llave que cierra createChunk
-} // Llave que cierra la clase World
+    } 
+}

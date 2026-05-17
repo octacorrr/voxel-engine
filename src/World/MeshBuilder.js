@@ -39,7 +39,7 @@ export class MeshBuilder {
 
         // 4. Recorremos el arreglo 3D del chunk
         for (let x = 0; x < CHUNK_SIZE; x++) {
-            for (let y = 0; y < 32; y++) { // Altura máxima definida
+            for (let y = 0; y < 64; y++) { // Altura máxima definida de 64 bloques
                 for (let z = 0; z < CHUNK_SIZE; z++) {
                     const blockId = chunk.getBlock(x, y, z);
                     
@@ -55,8 +55,7 @@ export class MeshBuilder {
                         // Añadimos la instancia a la malla
                         mesh.setMatrixAt(instanceIndex, matrix);
 
-                        // MODIFICACIÓN CRÍTICA: Leemos el color correspondiente al ID del bloque.
-                        // Si por alguna razón el ID no existe, usamos el color Césped (1) por defecto.
+                        // Leemos el color correspondiente al ID del bloque.
                         const colorTarget = this.colors[blockId] || this.colors[1];
                         mesh.setColorAt(instanceIndex, colorTarget);
                         
@@ -68,6 +67,9 @@ export class MeshBuilder {
 
         // Le avisamos a Three.js que actualice los colores en la tarjeta de video
         mesh.instanceColor.needsUpdate = true;
+        
+        // Evitamos que Three.js oculte el chunk por error en las orillas de la pantalla
+        mesh.frustumCulled = false; 
 
         return mesh;
     }
