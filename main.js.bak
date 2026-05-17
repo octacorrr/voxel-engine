@@ -27,20 +27,22 @@ const world = new World(scene);
 world.generateArea(camera.position.x, camera.position.z); 
 
 // --- CONTROLES Y SISTEMA DE TIEMPO ---
-const playerControls = new Controls(camera); 
-const clock = new THREE.Clock(); // <--- CORREGIDO: Aquí creamos el reloj indispensable
+// ACTUALIZADO: Pasamos 'world' como segundo parámetro para que funcione la gravedad y colisión de suelo
+const playerControls = new Controls(camera, world); 
+const clock = new THREE.Clock(); 
 
 function animate() {
     requestAnimationFrame(animate);
-    const delta = clock.getDelta(); // Ahora sí tiene de dónde leer el delta
+    const delta = clock.getDelta(); 
     
+    // Los controles usan el delta y la información del mundo para calcular la física de caída
     playerControls.update(delta);
 
-    // Mapeo dinámico e infinito en tiempo real
+    // Mapeo dinámico e infinito en tiempo real con optimización anti-lag de 1 chunk por frame
     world.generateArea(camera.position.x, camera.position.z);
 
     renderer.render(scene, camera);
 }
 
 // ARRANQUE: Encendemos el bucle del juego
-animate(); 
+animate();

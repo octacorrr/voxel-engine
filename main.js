@@ -7,7 +7,7 @@ scene.background = new THREE.Color(0x87CEEB);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 // Inicializamos al personaje cerca del suelo para que no flote en el vacío
-camera.position.set(16, 10, 16); 
+camera.position.set(16, 40, 16); 
 
 const canvas = document.querySelector('#game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });

@@ -20,5 +20,5 @@ export function getTerrainHeight(x, z) {
     const finalHeight = layer1 + layer2 + layer3;
 
     // Retornamos la altura con un piso base de 12 bloques para que nunca baje de 0
-    return Math.floor(finalHeight + 12); 
+    return Math.floor(finalHeight + 50); 
 }

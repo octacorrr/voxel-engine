@@ -63,8 +63,11 @@ export class World {
                 // Rellenamos verticalmente desde el fondo (y = 0) hasta la altura máxima (h)
                 for (let y = 0; y < h; y++) {
                     let blockId = 3; // Por defecto, asumimos que es Piedra (Gris)
-
-                    if (y === h - 1) {
+                    
+                    // CORREGIDO: Una sola estructura limpia con llaves para evitar que se encimen las texturas
+                    if (y < 5) {
+                        blockId = 3; // Capa base obligatoria: siempre piedra sólida en el fondo
+                    } else if (y === h - 1) {
                         blockId = 1; // Si es el bloque más alto, es Césped (Verde)
                     } else if (y >= h - 4) {
                         blockId = 2; // Si está a menos de 4 bloques de la superficie, es Tierra (Café)
