@@ -7,102 +7,70 @@ export class World {
     constructor(scene) {
         this.scene = scene;
         this.meshBuilder = new MeshBuilder();
-        this.chunks = {}; // key: "cx,cz" → mesh de Three.js
+        this.chunks = {}; // Diccionario para memorizar chunks creados
     }
 
-    /**
-     * Genera chunks cercanos + elimina los lejanos (anti memory leak)
-     */
     generateArea(playerX, playerZ) {
+        // 1. Calculamos el chunk donde está parado el jugador
         const pCX = Math.floor(playerX / CHUNK_SIZE);
         const pCZ = Math.floor(playerZ / CHUNK_SIZE);
-        
-        const radio = 2;                    // Radio de renderizado (5x5 chunks)
-        const unloadRadio = radio + 2;      // Un poco más grande para evitar popping
 
-        let chunkCreadoEsteFrame = false;
+        // 2. Bajamos el radio a 2 (Área de 5x5). Para pantallas de móvil es ideal y más ligero.
+        const radio = 2; 
 
-        // === GENERACIÓN DE NUEVOS CHUNKS ===
+        // 3. SEGURO ANTI-LAG: Bandera para limitar la generación masiva
+        let chunkCreadoEsteCuadro = false;
+
         for (let x = pCX - radio; x <= pCX + radio; x++) {
             for (let z = pCZ - radio; z <= pCZ + radio; z++) {
                 const key = `${x},${z}`;
-
-                if (!this.chunks[key] && !chunkCreadoEsteFrame) {
+                
+                // Si el chunk NO existe en memoria y aún no hemos creado uno en este frame...
+                if (!this.chunks[key] && !chunkCreadoEsteCuadro) {
                     this.createChunk(x, z);
-                    chunkCreadoEsteFrame = true;
-                }
-            }
-        }
-
-        // === UNLOAD DE CHUNKS LEJANOS ===
-        this.unloadFarChunks(pCX, pCZ, unloadRadio);
-    }
-
-    /**
-     * Elimina chunks que están demasiado lejos del jugador
-     */
-    unloadFarChunks(pCX, pCZ, maxDistance) {
-        for (const key in this.chunks) {
-            const [cx, cz] = key.split(',').map(Number);
-            const distX = Math.abs(cx - pCX);
-            const distZ = Math.abs(cz - pCZ);
-
-            if (distX > maxDistance || distZ > maxDistance) {
-                const mesh = this.chunks[key];
-
-                // Limpieza correcta de memoria
-                if (mesh && mesh instanceof THREE.InstancedMesh) {
-                    this.scene.remove(mesh);
                     
-                    if (mesh.geometry) mesh.geometry.dispose();
-                    if (mesh.material) {
-                        if (Array.isArray(mesh.material)) {
-                            mesh.material.forEach(mat => mat.dispose());
-                        } else {
-                            mesh.material.dispose();
-                        }
-                    }
-                    if (mesh.instanceMatrix) mesh.instanceMatrix.dispose();
-                    if (mesh.instanceColor) mesh.instanceColor.dispose();
+                    // Activamos la bandera para bloquear los demás loops por este milisegundo
+                    chunkCreadoEsteCuadro = true; 
                 }
-
-                delete this.chunks[key];
             }
         }
     }
 
+    // CORREGIDO: Declaramos correctamente la función y abrimos la llave
     createChunk(cx, cz) {
-        const key = `${cx},${cz}`;
+        const key = `${cx},${cz}`; // Definimos la llave única de memoria para este chunk
 
         const chunk = new Chunk(cx, cz);
-        
         for (let x = 0; x < CHUNK_SIZE; x++) {
             for (let z = 0; z < CHUNK_SIZE; z++) {
-                const worldX = cx * CHUNK_SIZE + x;
-                const worldZ = cz * CHUNK_SIZE + z;
-                const h = getTerrainHeight(worldX, worldZ);
-
+                // Obtenemos la altura máxima de la superficie en esta coordenada
+                const h = getTerrainHeight(cx * CHUNK_SIZE + x, cz * CHUNK_SIZE + z);
+                
+                // Rellenamos verticalmente desde el fondo (y = 0) hasta la altura máxima (h)
                 for (let y = 0; y < h; y++) {
-                    let blockId = 3; // Piedra
+                    let blockId = 3; // Por defecto, asumimos que es Piedra (Gris)
 
                     if (y === h - 1) {
-                        blockId = 1; // Césped
+                        blockId = 1; // Si es el bloque más alto, es Césped (Verde)
                     } else if (y >= h - 4) {
-                        blockId = 2; // Tierra
+                        blockId = 2; // Si está a menos de 4 bloques de la superficie, es Tierra (Café)
                     }
 
+                    // Guardamos el bloque con su ID correspondiente
                     chunk.setBlock(x, y, z, blockId);
                 }
             }
         }
-
+        
+        // Generamos la malla optimizada con InstancedMesh leyendo los IDs de color
         const mesh = this.meshBuilder.buildChunkMesh(chunk);
-
+        
         if (mesh) {
             this.scene.add(mesh);
-            this.chunks[key] = mesh;
+            this.chunks[key] = mesh; // Memorizamos la malla para la próxima
         } else {
-            this.chunks[key] = null; // Marcamos que existe pero no tiene mesh
+            this.chunks[key] = true; // Memorizamos que aquí está vacío para no re-calcular
+            console.warn(`El chunk en ${cx}, ${cz} no generó malla visible.`);
         }
-    }
-}
+    } // Llave que cierra createChunk
+} // Llave que cierra la clase World
